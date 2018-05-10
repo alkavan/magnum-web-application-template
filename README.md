@@ -1,3 +1,4 @@
+# magnum-web-application-template
 
 #### CMake IDE Options (Arch)
 ```
