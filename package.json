@@ -1,0 +1,34 @@
+{
+  "name": "gl-ui",
+  "version": "1.0.0",
+  "description": "An OpenGL/WebGL application interface for the modern web browsers.",
+  "main": "src/EmscriptenApplication.js",
+  "scripts": {
+    "start": "webpack-dev-server",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mosra/magnum-bootstrap.git"
+  },
+  "keywords": [
+    "opengl",
+    "webgl"
+  ],
+  "author": "Igal Alkon <igal.alkon@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mosra/magnum-bootstrap/issues"
+  },
+  "homepage": "https://github.com/mosra/magnum-bootstrap#readme",
+  "devDependencies": {
+    "copy-webpack-plugin": "^4.5.1",
+    "eslint": "^4.19.1",
+    "html-webpack-plugin": "^3.2.0",
+    "script-loader": "^0.7.2",
+    "wasm-loader": "^1.3.0",
+    "webpack": "^4.8.1",
+    "webpack-cli": "^2.1.3",
+    "webpack-dev-server": "^3.1.4"
+  }
+}
