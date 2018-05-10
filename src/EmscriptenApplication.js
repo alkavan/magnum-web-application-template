@@ -20,7 +20,7 @@ var Module = {
     },
 
     setStatusDescription: function(message) {
-        var statusDescription = document.getElementById('statusDescription');
+        var statusDescription = document.getElementById('status-description');
         if(statusDescription) statusDescription.innerHTML = message;
     },
 

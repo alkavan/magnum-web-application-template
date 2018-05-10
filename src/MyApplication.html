@@ -3,14 +3,30 @@
 <head>
     <title>Magnum Emscripten Application</title>
     <meta charset="utf-8"/>
+    <link rel="stylesheet"
+          href="https://unpkg.com/purecss@1.0.0/build/pure-min.css"
+          integrity="sha384-nn4HPE8lTHyVtfCBi5yW9d20FjT8BJwUXyWZT9InLYax14RDjBj46LmSztkmNP9w"
+          crossorigin="anonymous">
     <link rel="stylesheet" href="WebApplication.css"/>
 </head>
 <body>
-<h1>Magnum Emscripten Application</h1>
-<div id="listener">
-    <canvas id="app-view"></canvas>
-    <div id="status">Initialization...</div>
-    <div id="statusDescription"></div>
+
+<div class="pure-g">
+    <div class="pure-u-6-24 app-control-panel">
+        <h2>APP CONTROL PANEL</h2>
+    </div>
+
+    <div class="pure-u-12-24">
+        <div id="status">Initialization...</div>
+        <div id="status-description"></div>
+        <canvas id="app-view"></canvas>
+    </div>
+
+    <div class="pure-u-6-24">
+        <h2>APP LOG</h2>
+        <div id="log"></div>
+    </div>
 </div>
+
 </body>
 </html>
