@@ -131,6 +131,7 @@ void MyApplication::keyPressEvent(KeyEvent& event) {
     else return;
 
     event.setAccepted();
+    redraw();
 }
 
 void MyApplication::mousePressEvent(MouseEvent& event) {
