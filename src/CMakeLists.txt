@@ -17,11 +17,13 @@ if(POLICY CMP0054)
 endif()
 
 find_package(Magnum REQUIRED
+        Sdl2Application
+        DebugTools
         GL
         MeshTools
         Primitives
         Shaders
-        Sdl2Application)
+        SceneGraph)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
@@ -31,11 +33,13 @@ add_executable(MyApplication MyApplication.cpp)
 
 target_link_libraries(MyApplication PRIVATE
     Magnum::Application
+    Magnum::DebugTools
     Magnum::GL
     Magnum::Magnum
     Magnum::MeshTools
     Magnum::Primitives
     Magnum::Shaders
+    Magnum::SceneGraph
 )
 
 if(CORRADE_TARGET_EMSCRIPTEN)

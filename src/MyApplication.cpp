@@ -3,18 +3,59 @@
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/Renderer.h>
-#include <Magnum/MeshTools/Interleave.h>
-#include <Magnum/MeshTools/CompressIndices.h>
+#include <Magnum/MeshTools/Compile.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Primitives/Cube.h>
 #include <Magnum/Shaders/Phong.h>
-#include <Magnum/Shaders/VertexColor.h>
+#include <Magnum/SceneGraph/MatrixTransformation3D.h>
+#include <Magnum/SceneGraph/Drawable.h>
+#include <Magnum/SceneGraph/Scene.h>
+#include <Magnum/SceneGraph/Camera.h>
 #include <Magnum/Trade/MeshData3D.h>
+#include <Magnum/DebugTools/ResourceManager.h>
+#include <Magnum/Timeline.h>
 
 #define CORRADE_TARGET_EMSCRIPTEN
 
 using namespace Magnum;
 using namespace Math::Literals;
+using namespace Magnum::SceneGraph;
+using namespace Magnum::DebugTools;
+using namespace Magnum::MeshTools;
+
+typedef SceneGraph::Scene<SceneGraph::MatrixTransformation3D> Scene3D;
+typedef SceneGraph::Object<SceneGraph::MatrixTransformation3D> Object3D;
+
+class ExampleCube: public Object3D, public SceneGraph::Drawable3D {
+public:
+    explicit ExampleCube(Object3D* parent, SceneGraph::DrawableGroup3D* group): Object3D{parent}, SceneGraph::Drawable3D{*this, group} {
+        std::tie(_mesh, _vertices, _indices) = MeshTools::compile(Primitives::cubeSolid(), GL::BufferUsage::StaticDraw);
+        _color = Color3::fromHsv(216.0_degf, 0.85f, 1.0f);
+    }
+
+private:
+    Color3 _color;
+
+    void draw(const Matrix4& transformationMatrix, Camera3D& camera) override {
+        _shader.setDiffuseColor(_color)
+                .setLightPosition(camera.cameraMatrix().transformPoint({5.0f, 5.0f, 7.0f}))
+                .setTransformationMatrix(transformationMatrix)
+                .setNormalMatrix(transformationMatrix.rotation())
+                .setProjectionMatrix(camera.projectionMatrix());
+
+        _mesh.draw(_shader);
+    }
+public:
+    void changeColor() {
+        _color = Color3::fromHsv(_color.hue() + 50.0_degf, 1.0f, 1.0f);
+        _shader.setDiffuseColor(_color);
+    }
+
+    GL::Mesh _mesh;
+    std::unique_ptr<GL::Buffer> _vertices, _indices;
+    Shaders::Phong _shader;
+};
+
 
 class MyApplication: public Platform::Application {
     public:
@@ -22,17 +63,21 @@ class MyApplication: public Platform::Application {
 
     private:
         void drawEvent() override;
+        void viewportEvent(const Vector2i& size) override;
+        void keyPressEvent(KeyEvent& event) override;
         void mousePressEvent(MouseEvent& event) override;
         void mouseReleaseEvent(MouseEvent& event) override;
         void mouseMoveEvent(MouseMoveEvent& event) override;
 
-        GL::Buffer _vertexBuffer{GL::Buffer::TargetHint::Array};
-        GL::Buffer _indexBuffer{GL::Buffer::TargetHint::ElementArray};
+        DebugTools::ResourceManager _manager;
 
-        GL::Mesh _mesh;
-        Shaders::Phong _shader;
+        Scene3D _scene;
+        Object3D *_cameraRig, *_cameraObject;
+        SceneGraph::Camera3D* _camera;
 
-        Matrix4 _transformation, _projection;
+        SceneGraph::DrawableGroup3D _drawables;
+        ExampleCube *_cube;
+        Matrix4 _transformation;
         Vector2i _previousMousePosition;
         Color3 _color;
 };
@@ -44,42 +89,48 @@ MyApplication::MyApplication(const Arguments& arguments) : Platform::Application
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 
-    const Trade::MeshData3D cube = Primitives::cubeSolid();
+    /* Camera setup */
+    (_cameraRig = new Object3D(&_scene))
+            ->translate({0.f, 0.f, 0.f});
+    (_cameraObject = new Object3D(_cameraRig))
+            ->translate({0.f, 0.f, 10.f});
+    (_camera = new SceneGraph::Camera3D(*_cameraObject))
+            ->setAspectRatioPolicy(SceneGraph::AspectRatioPolicy::Extend)
+            .setProjectionMatrix(Matrix4::perspectiveProjection(Rad(Float(M_PI_4)), 1.0f, 0.001f, 100.0f))
+            .setViewport(GL::defaultFramebuffer.viewport().size());
 
-    _vertexBuffer.setData(MeshTools::interleave(cube.positions(0), cube.normals(0)), GL::BufferUsage::StaticDraw);
-
-    Containers::Array<char> indexData;
-    MeshIndexType indexType;
-    UnsignedInt indexStart, indexEnd;
-    std::tie(indexData, indexType, indexStart, indexEnd) = MeshTools::compressIndices(cube.indices());
-    _indexBuffer.setData(indexData, GL::BufferUsage::StaticDraw);
-
-    _mesh.setPrimitive(cube.primitive())
-            .setCount(cube.indices().size())
-            .addVertexBuffer(_vertexBuffer, 0, Shaders::Phong::Position{}, Shaders::Phong::Normal{})
-            .setIndexBuffer(_indexBuffer, 0, indexType, indexStart, indexEnd);
+    _cube = new ExampleCube(&_scene, &_drawables);
 
     _transformation = Matrix4::rotationX(30.0_degf)*
                       Matrix4::rotationY(40.0_degf);
-    _color = Color3::fromHsv(35.0_degf, 1.0f, 1.0f);
 
-    _projection = Matrix4::perspectiveProjection(35.0_degf, Vector2{GL::defaultFramebuffer.viewport().size()}.aspectRatio(), 0.01f, 100.0f)*
-                  Matrix4::translation(Vector3::zAxis(-10.0f));
+    _cube->setTransformation(_transformation);
+
+    _color = Color3::fromHsv(35.0_degf, 1.0f, 1.0f);
 }
 
 void MyApplication::drawEvent() {
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth);
+    _camera->draw(_drawables);
+}
 
-    _shader.setLightPosition({7.0f, 5.0f, 2.5f})
-            .setLightColor(Color3{1.0f})
-            .setDiffuseColor(_color)
-            .setAmbientColor(Color3::fromHsv(_color.hue(), 1.0f, 0.3f))
-            .setTransformationMatrix(_transformation)
-            .setNormalMatrix(_transformation.rotationScaling())
-            .setProjectionMatrix(_projection);
-    _mesh.draw(_shader);
+void MyApplication::viewportEvent(const Vector2i& size) {
+    GL::defaultFramebuffer.setViewport({{}, size});
+    _camera->setViewport(size);
+}
 
-    swapBuffers();
+void MyApplication::keyPressEvent(KeyEvent& event) {
+    if(event.key() == KeyEvent::Key::Down)
+        _cameraObject->rotateX(Deg(5.0f));
+    else if(event.key() == KeyEvent::Key::Up)
+        _cameraObject->rotateX(Deg(-5.0f));
+    else if(event.key() == KeyEvent::Key::Left)
+        _cameraRig->rotateY(Deg(-5.0f));
+    else if(event.key() == KeyEvent::Key::Right)
+        _cameraRig->rotateY(Deg(5.0f));
+    else return;
+
+    event.setAccepted();
 }
 
 void MyApplication::mousePressEvent(MouseEvent& event) {
@@ -90,7 +141,8 @@ void MyApplication::mousePressEvent(MouseEvent& event) {
 }
 
 void MyApplication::mouseReleaseEvent(MouseEvent& event) {
-    _color = Color3::fromHsv(_color.hue() + 50.0_degf, 1.0f, 1.0f);
+
+    _cube->changeColor();
 
     event.setAccepted();
     redraw();
@@ -107,6 +159,8 @@ void MyApplication::mouseMoveEvent(MouseMoveEvent& event) {
             Matrix4::rotationX(Rad{delta.y()})*
             _transformation*
             Matrix4::rotationY(Rad{delta.x()});
+
+    _cube->setTransformation(_transformation);
 
     _previousMousePosition = event.position();
     event.setAccepted();
