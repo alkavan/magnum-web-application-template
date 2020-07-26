@@ -3,6 +3,7 @@
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/Renderer.h>
+#include <Magnum/Math/Color.h>
 #include <Magnum/MeshTools/Compile.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Primitives/Cube.h>
@@ -29,8 +30,8 @@ typedef SceneGraph::Object<SceneGraph::MatrixTransformation3D> Object3D;
 class ExampleCube: public Object3D, public SceneGraph::Drawable3D {
 public:
     explicit ExampleCube(Object3D* parent, SceneGraph::DrawableGroup3D* group): Object3D{parent}, SceneGraph::Drawable3D{*this, group} {
-        std::tie(_mesh, _vertices, _indices) = MeshTools::compile(Primitives::cubeSolid(), GL::BufferUsage::StaticDraw);
-        _color = Color3::fromHsv(216.0_degf, 0.85f, 1.0f);
+        _mesh = MeshTools::compile(Primitives::cubeSolid());
+        _color = Color3::fromHsv(ColorHsv(216.0_degf, 0.85f, 1.0f));
     }
 
 private:
@@ -43,16 +44,15 @@ private:
                 .setNormalMatrix(transformationMatrix.rotation())
                 .setProjectionMatrix(camera.projectionMatrix());
 
-        _mesh.draw(_shader);
+        _shader.draw(_mesh);
     }
 public:
     void changeColor() {
-        _color = Color3::fromHsv(_color.hue() + 50.0_degf, 1.0f, 1.0f);
+        _color = Color3::fromHsv(ColorHsv(_color.hue() + 50.0_degf,1.0f, 1.0f));
         _shader.setDiffuseColor(_color);
     }
 
     GL::Mesh _mesh;
-    std::unique_ptr<GL::Buffer> _vertices, _indices;
     Shaders::Phong _shader;
 };
 
@@ -63,7 +63,7 @@ class MyApplication: public Platform::Application {
 
     private:
         void drawEvent() override;
-        void viewportEvent(const Vector2i& size) override;
+        void viewportEvent(ViewportEvent& event) override;
         void keyPressEvent(KeyEvent& event) override;
         void mousePressEvent(MouseEvent& event) override;
         void mouseReleaseEvent(MouseEvent& event) override;
@@ -106,7 +106,7 @@ MyApplication::MyApplication(const Arguments& arguments) : Platform::Application
 
     _cube->setTransformation(_transformation);
 
-    _color = Color3::fromHsv(35.0_degf, 1.0f, 1.0f);
+    _color =  Color3::fromHsv(ColorHsv(35.0_degf, 1.0f, 1.0f));
 }
 
 void MyApplication::drawEvent() {
@@ -114,9 +114,9 @@ void MyApplication::drawEvent() {
     _camera->draw(_drawables);
 }
 
-void MyApplication::viewportEvent(const Vector2i& size) {
-    GL::defaultFramebuffer.setViewport({{}, size});
-    _camera->setViewport(size);
+void MyApplication::viewportEvent(ViewportEvent& event) {
+    GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
+    _camera->setViewport(event.framebufferSize());
 }
 
 void MyApplication::keyPressEvent(KeyEvent& event) {
