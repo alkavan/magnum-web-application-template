@@ -16,8 +16,8 @@
 #
 #   This file is part of Magnum.
 #
-#   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018
-#             Vladimír Vondruš <mosra@centrum.cz>
+#   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
+#               2020 Vladimír Vondruš <mosra@centrum.cz>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
 #   copy of this software and associated documentation files (the "Software"),
@@ -38,8 +38,11 @@
 #   DEALINGS IN THE SOFTWARE.
 #
 
-# Library
-if(NOT CORRADE_TARGET_EMSCRIPTEN)
+# Under Emscripten, GL is linked implicitly. With MINIMAL_RUNTIME you need to
+# specify -lGL. Simply set the library name to that.
+if(CORRADE_TARGET_EMSCRIPTEN)
+    set(EGL_LIBRARY GL CACHE STRING "Path to a library." FORCE)
+else()
     find_library(EGL_LIBRARY NAMES
         EGL
 
@@ -48,7 +51,6 @@ if(NOT CORRADE_TARGET_EMSCRIPTEN)
 
         # On iOS a part of OpenGLES
         OpenGLES)
-    set(EGL_LIBRARY_NEEDED EGL_LIBRARY)
 endif()
 
 # Include dir
@@ -60,29 +62,25 @@ find_path(EGL_INCLUDE_DIR NAMES
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(EGL DEFAULT_MSG
-    ${EGL_LIBRARY_NEEDED}
+    EGL_LIBRARY
     EGL_INCLUDE_DIR)
 
 if(NOT TARGET EGL::EGL)
-    if(EGL_LIBRARY_NEEDED)
-        # Work around BUGGY framework support on macOS
-        # http://public.kitware.com/pipermail/cmake/2016-April/063179.html
-        if(APPLE AND ${EGL_LIBRARY} MATCHES "\\.framework$")
-            add_library(EGL::EGL INTERFACE IMPORTED)
-            set_property(TARGET EGL::EGL APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES ${EGL_LIBRARY})
-        else()
-            add_library(EGL::EGL UNKNOWN IMPORTED)
-            set_property(TARGET EGL::EGL PROPERTY
-                IMPORTED_LOCATION ${EGL_LIBRARY})
-        endif()
-    else()
-        # This won't work in CMake 2.8.12, but that affects Emscripten only so
-        # I assume people building for that are not on that crap old Ubuntu
-        # 14.04 LTS
+    # Work around BUGGY framework support on macOS. Do this also in case of
+    # Emscripten, since there we don't have a location either.
+    # http://public.kitware.com/pipermail/cmake/2016-April/063179.html
+    if((APPLE AND ${EGL_LIBRARY} MATCHES "\\.framework$") OR CORRADE_TARGET_EMSCRIPTEN)
         add_library(EGL::EGL INTERFACE IMPORTED)
+        set_property(TARGET EGL::EGL APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES ${EGL_LIBRARY})
+    else()
+        add_library(EGL::EGL UNKNOWN IMPORTED)
+        set_property(TARGET EGL::EGL PROPERTY
+            IMPORTED_LOCATION ${EGL_LIBRARY})
     endif()
 
     set_target_properties(EGL::EGL PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${EGL_INCLUDE_DIR})
 endif()
+
+mark_as_advanced(EGL_LIBRARY EGL_INCLUDE_DIR)
